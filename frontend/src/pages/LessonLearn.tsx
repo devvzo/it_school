@@ -341,7 +341,7 @@ const LessonLearn: FC = () => {
     const result = checkAnswer(currentQuestion);
     setResults((prev) => ({ ...prev, [currentQuestion.id]: result }));
 
-      if (result.isCorrect && result.xpEarned > 0) {
+    if (result.isCorrect && result.xpEarned > 0) {
       // Правильный ответ - сохраняем прогресс и даём серверу самому начислить XP
       try {
         await axios.post(
