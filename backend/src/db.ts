@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, type QueryResultRow } from 'pg';
 import { DATABASE_URL } from './env';
 
 let pool: Pool | null = null;
@@ -14,7 +14,10 @@ if (DATABASE_URL) {
 
 export { pool };
 
-export async function query<T>(text: string, params?: unknown[]): Promise<T[]> {
+export async function query<T extends QueryResultRow = QueryResultRow>(
+  text: string,
+  params?: unknown[]
+): Promise<T[]> {
   if (!pool) {
     throw new Error('Database not initialized. Please set DATABASE_URL in .env');
   }
