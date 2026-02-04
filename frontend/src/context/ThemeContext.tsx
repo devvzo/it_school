@@ -33,6 +33,24 @@ export const ThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } catch {
       // ignore
     }
+
+    // Обновляем theme-color для адресной строки браузера
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', theme === 'dark' ? '#17212B' : '#FFFFFF');
+    } else {
+      // Создаём meta tag, если его нет
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = theme === 'dark' ? '#17212B' : '#FFFFFF';
+      document.head.appendChild(meta);
+    }
+
+    // Обновляем apple-mobile-web-app-status-bar-style для iOS
+    const appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (appleStatusBar) {
+      appleStatusBar.setAttribute('content', theme === 'dark' ? 'black-translucent' : 'default');
+    }
   }, [theme]);
 
   const setTheme = (newTheme: Theme) => {
