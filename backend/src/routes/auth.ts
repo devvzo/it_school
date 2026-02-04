@@ -90,9 +90,7 @@ router.get('/me', async (req: Request, res: Response) => {
     }
 
     const user = users[0];
-    if (!user.is_verified) {
-      return res.status(403).json({ message: 'Email не подтверждён' });
-    }
+    // Убрана проверка is_verified, так как регистрация теперь без подтверждения email
 
     res.json({
       user: {

@@ -3,7 +3,7 @@ import { Router as createRouter } from 'express';
 import crypto from 'crypto';
 import { query } from '../db';
 import { verifyJwt } from '../utils/tokens';
-import { sendEmail } from '../services/emailService';
+// import { sendEmail } from '../services/emailService'; // Отправка email отключена, ссылка выводится для ручной отправки
 
 const router: Router = createRouter();
 
@@ -105,22 +105,23 @@ router.post('/invite', async (req: Request, res: Response) => {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const confirmLink = `${baseUrl}/parent-invite/${tokenValue}`;
 
-    await sendEmail(
-      child.email,
-      'Запрос на родительский контроль в IT School',
-      `Здравствуйте!
-
-Ваш родитель запросил доступ к просмотру вашего прогресса в IT School.
-
-Если вы согласны, перейдите по ссылке и подтвердите запрос:
-${confirmLink}
-
-Если вы не ожидали это письмо, просто проигнорируйте его.`
-    );
+    // Отправка email закомментирована - ссылка выводится пользователю для ручной отправки
+    // await sendEmail(
+    //   child.email,
+    //   'Запрос на родительский контроль в IT School',
+    //   `Здравствуйте!
+    //
+    // Ваш родитель запросил доступ к просмотру вашего прогресса в IT School.
+    //
+    // Если вы согласны, перейдите по ссылке и подтвердите запрос:
+    // ${confirmLink}
+    //
+    // Если вы не ожидали это письмо, просто проигнорируйте его.`
+    // );
 
     res.json({
-      message:
-        'На электронную почту ученика отправлена ссылка для подтверждения добавления. После подтверждения ученик появится в списке.',
+      message: 'Ссылка для подтверждения создана. Отправьте её ребёнку вручную.',
+      inviteLink: confirmLink,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Ошибка создания инвайта';

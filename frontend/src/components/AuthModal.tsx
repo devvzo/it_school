@@ -144,16 +144,15 @@ const AuthModal: FC<AuthModalProps> = ({ isOpen, onClose }) => {
     if (registerLoading) return;
     setRegisterLoading(true);
     try {
-      await axios.post('/api/auth/register', {
+      const res = await axios.post<{ message: string; token: string; user: any }>('/api/auth/register', {
         name: `${data.lastName?.trim() ?? ''} ${data.name}`.trim(),
         email: data.email,
         password: data.password,
       });
-      setVerifyEmail(data.email);
-      setVerifyFlow('register');
-      setMode('verify');
-      setCodeDigits(['', '', '', '', '', '']);
-      setCodeStatus('idle');
+      // Регистрация теперь сразу возвращает токен и пользователя, логиним сразу
+      login(res.data.user, res.data.token);
+      close();
+      window.location.reload();
     } catch (e: any) {
       setError(e?.response?.data?.message ?? 'Ошибка регистрации');
     } finally {

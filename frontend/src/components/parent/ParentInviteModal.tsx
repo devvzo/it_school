@@ -17,14 +17,16 @@ const ParentInviteModal: FC<Props> = ({ onClose, onInvited }) => {
   const [childLastName, setChildLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [infoText, setInfoText] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
     setLoading(true);
     setInfoText(null);
+    setInviteLink(null);
     try {
-      const res = await axios.post<{ message: string }>(
+      const res = await axios.post<{ message: string; inviteLink?: string }>(
         '/api/parents/invite',
         { email, fullName: `${childLastName.trim()} ${childFirstName.trim()}`.trim() },
         {
@@ -34,6 +36,9 @@ const ParentInviteModal: FC<Props> = ({ onClose, onInvited }) => {
         }
       );
       setInfoText(res.data.message);
+      if (res.data.inviteLink) {
+        setInviteLink(res.data.inviteLink);
+      }
     } catch (err: any) {
       setInfoText(err?.response?.data?.message ?? 'Ошибка отправки приглашения');
     } finally {
@@ -69,7 +74,7 @@ const ParentInviteModal: FC<Props> = ({ onClose, onInvited }) => {
               <h2 className="text-lg font-semibold">Добавить ребёнка</h2>
               <p className="text-xs sm:text-sm text-tg-muted mt-1.5">
                 Введите email ученика и его ФИО так, как они указаны при регистрации. 
-                На почту ребёнка будет отправлена ссылка для подтверждения.
+                После создания приглашения вы получите ссылку, которую нужно отправить ребёнку вручную.
               </p>
             </div>
             <button
@@ -119,9 +124,35 @@ const ParentInviteModal: FC<Props> = ({ onClose, onInvited }) => {
             </div>
 
             {infoText && (
-              <p className="text-xs sm:text-sm text-tg-muted bg-tg-bg-secondary/80 border border-tg-border/40 rounded-xl px-3 py-2">
-                {infoText}
-              </p>
+              <div className="space-y-2">
+                <p className="text-xs sm:text-sm text-tg-muted bg-tg-bg-secondary/80 border border-tg-border/40 rounded-xl px-3 py-2">
+                  {infoText}
+                </p>
+                {inviteLink && (
+                  <div className="bg-tg-bg-secondary/80 border border-tg-border/40 rounded-xl px-3 py-2 space-y-2">
+                    <p className="text-xs font-semibold text-tg-text">Ссылка для отправки ребёнку:</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={inviteLink}
+                        className="flex-1 px-2 py-1.5 rounded-lg border border-tg-border/60 bg-tg-bg text-xs text-tg-text font-mono"
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(inviteLink);
+                          setInfoText('Ссылка скопирована в буфер обмена!');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-tg-accent hover:bg-tg-accent-soft text-xs font-semibold text-white transition-colors"
+                      >
+                        Копировать
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             <div className="flex gap-2 pt-1">

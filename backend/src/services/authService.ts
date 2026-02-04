@@ -51,35 +51,35 @@ export async function registerUser(input: RegisterInput) {
 
   let userId: number;
   if (existing.length) {
+    // Обновляем существующего пользователя и сразу делаем verified
     const updated = await query<{ id: number }>(
-      'UPDATE users SET name = $1, password_hash = $2, is_verified = false WHERE id = $3 RETURNING id',
+      'UPDATE users SET name = $1, password_hash = $2, is_verified = true WHERE id = $3 RETURNING id',
       [data.name, passwordHash, existing[0].id]
     );
     userId = updated[0].id;
   } else {
+    // Создаём нового пользователя сразу с is_verified = true
     const created = await query<{ id: number }>(
-      'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+      'INSERT INTO users (name, email, password_hash, is_verified) VALUES ($1, $2, $3, true) RETURNING id',
       [data.name, data.email, passwordHash]
     );
     userId = created[0].id;
   }
 
-  const code = generateNumericCode(6);
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+  // Генерируем токен и сразу возвращаем пользователя (без подтверждения email)
+  const token = signJwt({ userId });
+  const userRows = await query<{ is_admin: boolean }>('SELECT is_admin FROM users WHERE id = $1', [userId]);
 
-  await query(
-    'INSERT INTO email_verification_codes (user_id, code, expires_at) VALUES ($1, $2, $3)',
-    [userId, code, expiresAt]
-  );
-
-  // Отправляем email асинхронно, не блокируя ответ пользователю
-  sendEmailAsync(
-    data.email,
-    'Код подтверждения регистрации в IT School',
-    `Ваш код подтверждения: ${code}\n\nКод действителен 15 минут.`
-  );
-
-  return { message: 'Код подтверждения отправлен на указанную почту' };
+  return {
+    message: 'Регистрация успешна',
+    token,
+    user: {
+      id: userId,
+      email: data.email,
+      name: data.name,
+      isAdmin: userRows[0]?.is_admin ?? false,
+    },
+  };
 }
 
 export async function verifyEmail(input: VerifyInput) {
@@ -145,9 +145,7 @@ export async function loginUser(input: LoginInput) {
     throw new Error('Неверный пароль');
   }
 
-  if (!user.is_verified) {
-    throw new Error('Подтвердите email перед входом');
-  }
+  // Убрана проверка is_verified, так как регистрация теперь без подтверждения email
 
   const token = signJwt({ userId: user.id });
   const userRows = await query<{ is_admin: boolean }>('SELECT is_admin FROM users WHERE id = $1', [user.id]);
