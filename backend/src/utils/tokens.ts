@@ -6,8 +6,8 @@ export interface JwtPayload {
 }
 
 export function signJwt(payload: JwtPayload, expiresIn: string | number = '7d'): string {
-  const options: SignOptions = { expiresIn };
-  return jwt.sign(payload, JWT_SECRET as Secret, options);
+  // Приводим весь объект опций к SignOptions, чтобы удовлетворить строгую типизацию jsonwebtoken
+  return jwt.sign(payload, JWT_SECRET as Secret, { expiresIn } as SignOptions);
 }
 
 export function verifyJwt(token: string): JwtPayload {
