@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark theme (default) */
+  --tg-bg: #17212B;
+  --tg-bg-light: #182533;
+  --tg-bg-secondary: #0E1621;
+  --tg-accent: #2AABEE;
+  --tg-accent-soft: #1C95D0;
+  --tg-text: #FFFFFF;
+  --tg-muted: #7C8794;
+  --tg-border: #1F2833;
+  --tg-hover: rgba(255, 255, 255, 0.05);
+  --tg-shadow-sm: 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --tg-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --tg-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --tg-gradient: linear-gradient(to bottom right, #0E1621, #17212B, #0B141E);
+  
+  /* Success and error colors - более приятные оттенки */
+  --tg-success: #4ADE80;
+  --tg-success-bg: rgba(74, 222, 128, 0.12);
+  --tg-success-border: rgba(74, 222, 128, 0.3);
+  --tg-success-text: #86EFAC;
+  --tg-error: #F87171;
+  --tg-error-bg: rgba(248, 113, 113, 0.12);
+  --tg-error-border: rgba(248, 113, 113, 0.3);
+  --tg-error-text: #FCA5A5;
+}
+
+.light {
+  /* Light theme */
+  --tg-bg: #FFFFFF;
+  --tg-bg-light: #F7F8F9;
+  --tg-bg-secondary: #EFF0F1;
+  --tg-accent: #3390EC;
+  --tg-accent-soft: #2481CC;
+  --tg-text: #000000;
+  --tg-muted: #707579;
+  --tg-border: #E4E5E6;
+  --tg-hover: rgba(0, 0, 0, 0.05);
+  --tg-shadow-sm: 0 0 0 1px rgba(0, 0, 0, 0.05);
+  --tg-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --tg-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.15);
+  --tg-gradient: linear-gradient(to bottom right, #FFFFFF, #F7F8F9, #EFF0F1);
+}
+
+* {
+  border-color: var(--tg-border);
+}
+
+html {
+  background: var(--tg-bg);
+  transition: background 0.3s ease;
+  overflow-x: hidden;
+}
+
+body {
+  @apply text-tg-text font-sans antialiased;
+  background: var(--tg-gradient);
+  background-attachment: fixed;
+  background-size: cover;
+  transition: background 0.3s ease, color 0.3s ease;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  /* Глобально запрещаем выделение текста и вызов контекстного меню,
+     чтобы усложнить копирование контента. */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Разрешаем выделение и стандартное поведение внутри полей ввода,
+   чтобы не ломать ввод данных пользователем. */
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  background: var(--tg-gradient);
+  background-attachment: fixed;
+  background-size: cover;
+  position: relative;
+}
+
+/* Скроллбары в стиле Telegram */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--tg-bg-secondary);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--tg-accent);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tg-accent-soft);
+}
+
+/* Убираем белые полосы при прокрутке */
+::-webkit-scrollbar-corner {
+  background: var(--tg-bg);
+}
+
+
