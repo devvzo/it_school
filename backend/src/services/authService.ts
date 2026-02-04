@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { query } from '../db';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateNumericCode, signJwt } from '../utils/tokens';
-import { sendEmail } from './emailService';
+import { sendEmailAsync } from './emailService';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Введите имя и фамилию'),
@@ -72,7 +72,8 @@ export async function registerUser(input: RegisterInput) {
     [userId, code, expiresAt]
   );
 
-  await sendEmail(
+  // Отправляем email асинхронно, не блокируя ответ пользователю
+  sendEmailAsync(
     data.email,
     'Код подтверждения регистрации в IT School',
     `Ваш код подтверждения: ${code}\n\nКод действителен 15 минут.`
@@ -179,7 +180,8 @@ export async function requestPasswordReset(input: ResetRequestInput) {
     [userId, token, expiresAt]
   );
 
-  await sendEmail(
+  // Отправляем email асинхронно, не блокируя ответ пользователю
+  sendEmailAsync(
     data.email,
     'Сброс пароля в IT School',
     `Ваш код для сброса пароля: ${token}\n\nКод действителен 15 минут.`
