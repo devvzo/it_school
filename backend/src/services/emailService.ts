@@ -12,10 +12,19 @@ if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
-    // Таймауты для предотвращения зависаний
-    connectionTimeout: 10000, // 10 секунд на подключение
-    greetingTimeout: 10000, // 10 секунд на приветствие
-    socketTimeout: 10000, // 10 секунд на операцию
+    // Увеличенные таймауты для медленных SMTP серверов
+    connectionTimeout: 30000, // 30 секунд на подключение
+    greetingTimeout: 30000, // 30 секунд на приветствие
+    socketTimeout: 30000, // 30 секунд на операцию
+    // Дополнительные опции для стабильности
+    pool: true, // Использовать пул соединений
+    maxConnections: 1,
+    maxMessages: 3,
+    // Для некоторых SMTP серверов нужно явно указать TLS
+    requireTLS: SMTP_PORT === 587,
+    tls: {
+      rejectUnauthorized: false, // Для самоподписанных сертификатов (осторожно в продакшене!)
+    },
   });
 } else {
   // eslint-disable-next-line no-console
