@@ -40,12 +40,40 @@ const levelShortLabel: Record<string, string> = {
   Продвинутый: 'Продвинутым',
 };
 
+const avatarColors = [
+  '#0EA5E9',
+  '#22C55E',
+  '#A855F7',
+  '#F97316',
+  '#EC4899',
+  '#6366F1',
+];
+
+const getAvatarColor = (title: string) => {
+  let hash = 0;
+  for (let i = 0; i < title.length; i += 1) {
+    hash = (hash * 31 + title.charCodeAt(i)) | 0;
+  }
+  const index = Math.abs(hash) % avatarColors.length;
+  return avatarColors[index];
+};
+
 const CourseLearn: FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const getCourseImageSrc = (imageUrl: string | null) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+    const isDev = import.meta.env?.DEV;
+    const base = isDev ? 'http://localhost:4000' : '';
+    return `${base}${imageUrl}`;
+  };
 
   useEffect(() => {
     if (courseId && token) {
@@ -129,36 +157,68 @@ const CourseLearn: FC = () => {
   return (
     <div className="space-y-6">
       {/* Заголовок курса */}
-      <div className="bg-tg-bg-light rounded-2xl border border-tg-border/50 p-6" style={{ background: 'var(--tg-bg-light)' }}>
-        <div className="flex items-start gap-4 mb-4">
-          {course.imageUrl && (
-            <img
-              src={course.imageUrl.startsWith('http') ? course.imageUrl : `http://localhost:4000${course.imageUrl}`}
-              alt={course.title}
-              className="w-24 h-24 rounded-xl object-cover"
-            />
+      <div className="bg-tg-bg-light rounded-2xl md:rounded-3xl border border-tg-border/50 p-5 md:p-6 shadow-tg-lg" style={{ background: 'var(--tg-bg-light)' }}>
+        <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-5 mb-4">
+          {course.imageUrl ? (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shrink-0 shadow-tg-md border border-tg-border/40">
+              <img
+                src={getCourseImageSrc(course.imageUrl)}
+                alt={course.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-lg sm:text-xl font-bold text-white shrink-0 shadow-tg-md"
+              style={{ background: getAvatarColor(course.title) }}
+            >
+              {course.title[0]?.toUpperCase()}
+            </div>
           )}
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-tg-text mb-2">{course.title}</h1>
-            <p className="text-tg-muted mb-3">{course.description}</p>
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-tg-bg-secondary text-tg-text" style={{ background: 'var(--tg-bg-secondary)' }}>
+
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-tg-text leading-tight truncate">
+                  {course.title}
+                </h1>
+                <p className="mt-1 text-xs sm:text-sm text-tg-muted line-clamp-2">
+                  {course.description}
+                </p>
+              </div>
+              <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-xs font-medium bg-tg-bg-secondary text-tg-text whitespace-nowrap" style={{ background: 'var(--tg-bg-secondary)' }}>
                 {levelShortLabel[course.level] ?? course.level}
               </span>
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-tg-accent/20 text-tg-accent">
-                {totalXp}/{availableXp} XP
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+              <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-tg-bg-secondary text-tg-text sm:hidden" style={{ background: 'var(--tg-bg-secondary)' }}>
+                {levelShortLabel[course.level] ?? course.level}
+              </span>
+              <span className="inline-flex px-3 py-1 rounded-full text-xs font-semibold bg-tg-accent/10 text-tg-accent">
+                {totalXp}/{availableXp} XP по курсу
+              </span>
+              <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-tg-bg-secondary text-tg-muted" style={{ background: 'var(--tg-bg-secondary)' }}>
+                {completedLessons}/{totalLessons} уроков завершено
               </span>
             </div>
           </div>
         </div>
 
         {/* Прогресс-бар курса */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-tg-text">Прогресс курса</span>
-            <span className="text-sm text-tg-muted">{completedLessons}/{totalLessons} уроков</span>
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs sm:text-sm font-medium text-tg-text">
+              Прогресс курса
+            </span>
+            <span className="text-xs sm:text-sm text-tg-muted">
+              {Math.round(progressPercent)}% • {completedLessons}/{totalLessons} уроков
+            </span>
           </div>
-          <div className="w-full h-3 rounded-full overflow-hidden bg-tg-bg" style={{ background: 'var(--tg-bg)' }}>
+          <div className="w-full h-2.5 rounded-full overflow-hidden bg-tg-bg" style={{ background: 'var(--tg-bg)' }}>
             <motion.div
               className={
                 isCourseCompleted
@@ -173,34 +233,37 @@ const CourseLearn: FC = () => {
         </div>
 
         {/* Следующий урок */}
-        {nextLesson && currentModule && (
-          <div className="mt-4 p-4 rounded-xl bg-tg-accent/10 border border-tg-accent/30">
-            <p className="text-sm text-tg-muted mb-2">Следующий урок:</p>
+        <div className="mt-4">
+          {nextLesson && currentModule ? (
             <Link
               to={`/courses/${courseId}/lessons/${nextLesson.id}`}
-              className="flex items-center justify-between group"
+              className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-tg-accent/8 border border-tg-accent/30 hover:border-tg-accent/60 hover:bg-tg-accent/12 transition-colors group"
             >
-              <div>
-                <p className="font-semibold text-tg-text group-hover:text-tg-accent transition-colors">
+              <div className="min-w-0">
+                <p className="text-xs text-tg-muted mb-1">Следующий урок</p>
+                <p className="font-semibold text-sm sm:text-base text-tg-text group-hover:text-tg-accent transition-colors truncate">
                   {nextLesson.title}
                 </p>
-                <p className="text-xs text-tg-muted mt-1">
+                <p className="text-xs text-tg-muted mt-0.5 truncate">
                   {currentModule.title} • +{nextLesson.xpReward} XP
                 </p>
               </div>
-              <svg className="w-5 h-5 text-tg-muted group-hover:text-tg-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="hidden sm:inline text-xs text-tg-muted">Перейти</span>
+                <svg className="w-5 h-5 text-tg-muted group-hover:text-tg-accent transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </Link>
-          </div>
-        )}
-
-        {!nextLesson && (
-          <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
-            <p className="text-emerald-400 font-semibold">🎉 Курс завершен!</p>
-            <p className="text-sm text-tg-muted mt-1">Вы прошли все уроки</p>
-          </div>
-        )}
+          ) : (
+            <div className="mt-2 p-3.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/30 text-center">
+              <p className="text-sm font-semibold text-emerald-400">Курс завершён</p>
+              <p className="text-xs sm:text-sm text-tg-muted mt-1">
+                Все уроки этого курса успешно пройдены.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Модули */}
@@ -231,11 +294,14 @@ const CourseLearn: FC = () => {
                   {module.description && (
                     <p className="text-tg-muted mb-3">{module.description}</p>
                   )}
-                  <div className="flex items-center gap-2 text-sm text-tg-muted">
-                    <span>{moduleCompleted}/{moduleLessons.length} уроков</span>
-                    <span>•</span>
-                    <span>{moduleTotalXp} XP</span>
-                  </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-tg-muted">
+                <span className="inline-flex px-2.5 py-1 rounded-full bg-tg-bg-secondary/80">
+                  {moduleCompleted}/{moduleLessons.length} уроков
+                </span>
+                <span className="inline-flex px-2.5 py-1 rounded-full bg-tg-bg-secondary/80">
+                  {moduleTotalXp} XP в модуле
+                </span>
+              </div>
                 </div>
               </div>
 
@@ -278,14 +344,14 @@ const CourseLearn: FC = () => {
                           {...(isUnlocked ? { to: `/courses/${courseId}/lessons/${lesson.id}` } : {})}
                           className={`block p-4 rounded-xl border transition-all group ${
                             lesson.completed
-                              ? 'bg-emerald-500/10 border-emerald-500/50 hover:border-emerald-500/70'
+                              ? 'bg-emerald-500/10 border-emerald-500/60 hover:border-emerald-500'
                               : isUnlocked
-                              ? 'bg-tg-bg border-tg-border/50 hover:border-tg-accent/50'
+                              ? 'bg-tg-bg border-tg-border/50 hover:border-tg-accent/60'
                               : 'bg-tg-bg-secondary border-tg-border/30 opacity-60 cursor-not-allowed'
                           }`}
                           style={{
                             background: lesson.completed
-                              ? 'rgba(16, 185, 129, 0.1)'
+                              ? 'rgba(16, 185, 129, 0.08)'
                               : isUnlocked
                               ? 'var(--tg-bg)'
                               : 'var(--tg-bg-secondary)',
@@ -298,59 +364,66 @@ const CourseLearn: FC = () => {
                               : 'Сначала пройдите предыдущие уроки'
                           }
                         >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 flex-1">
-                          {lesson.completed ? (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0"
-                            >
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </motion.div>
-                          ) : (
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                              isUnlocked ? 'border-tg-border' : 'border-tg-border/30'
-                            }`}>
-                              <span className="text-xs text-tg-muted">
-                                {isUnlocked ? lesson.orderIndex : '🔒'}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <span className={`font-medium block truncate ${
-                              lesson.completed ? 'text-emerald-400' : 'text-tg-text group-hover:text-tg-accent'
-                            } transition-colors`}>
-                              {lesson.title}
-                            </span>
-                            <span className="text-xs text-tg-muted mt-0.5">
-                              {`+${lesson.xpReward} XP`}
-                            </span>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {lesson.completed ? (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-tg-md"
+                                >
+                                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </motion.div>
+                              ) : (
+                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                  isUnlocked ? 'border-tg-border' : 'border-tg-border/30'
+                                }`}>
+                                  <span className="text-xs text-tg-muted">
+                                    {isUnlocked ? lesson.orderIndex : '🔒'}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-medium block truncate text-sm ${
+                                    lesson.completed ? 'text-emerald-400' : 'text-tg-text group-hover:text-tg-accent'
+                                  } transition-colors`}>
+                                    {lesson.title}
+                                  </span>
+                                  {lesson.completed && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400">
+                                      Выполнен
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-tg-muted mt-0.5 block">
+                                  {`+${lesson.xpReward} XP`}
+                                </span>
 
-                            {isLocked && remainingXp > 0 && (
-                              <div className="mt-1">
-                                <div className="w-full h-1.5 rounded-full bg-tg-bg">
-                                  <div
-                                    className="h-full rounded-full bg-gradient-to-r from-tg-accent to-tg-accent-soft"
-                                    style={{ width: `${lessonProgressPercent}%` }}
-                                  />
-                                </div>
-                                <div className="flex justify-between text-[10px] text-tg-muted mt-0.5">
-                                  <span>{userCourseXp} XP</span>
-                                  <span>{requiredXp} XP</span>
-                                </div>
+                                {isLocked && remainingXp > 0 && (
+                                  <div className="mt-1.5">
+                                    <div className="w-full h-1.5 rounded-full bg-tg-bg">
+                                      <div
+                                        className="h-full rounded-full bg-gradient-to-r from-tg-accent to-tg-accent-soft"
+                                        style={{ width: `${lessonProgressPercent}%` }}
+                                      />
+                                    </div>
+                                    <div className="flex justify-between text-[10px] text-tg-muted mt-0.5">
+                                      <span>{userCourseXp} XP</span>
+                                      <span>{requiredXp} XP для доступа</span>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
+                            <svg className={`w-5 h-5 transition-colors flex-shrink-0 ${
+                              isUnlocked ? 'text-tg-muted group-hover:text-tg-accent' : 'text-tg-muted/50'
+                            }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
                           </div>
-                        </div>
-                        <svg className={`w-5 h-5 transition-colors flex-shrink-0 ${
-                          isUnlocked ? 'text-tg-muted group-hover:text-tg-accent' : 'text-tg-muted/50'
-                        }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
                         </Wrapper>
                       );
                     })()}

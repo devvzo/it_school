@@ -90,19 +90,20 @@ const LogoutButton: FC = () => {
 
   return (
     <>
-      <div className="relative inline-flex items-center gap-2 sm:gap-2.5 px-2 sm:px-3 py-2 rounded-full bg-tg-bg-light border border-tg-border/50 hover:border-tg-border hover:bg-tg-hover active:scale-95 transition-all duration-200 shadow-tg-sm shrink-0 group">
-        <span className="hidden sm:inline max-w-[100px] md:max-w-[160px] truncate font-semibold text-xs sm:text-sm text-tg-text">
+      <div className="relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-tg-bg-light border border-tg-border/40 hover:border-tg-border/80 hover:bg-tg-hover active:scale-95 transition-all duration-200 shadow-tg-sm shrink-0 group">
+        <span className="hidden sm:inline max-w-[110px] md:max-w-[170px] truncate font-medium text-[11px] sm:text-xs text-tg-muted group-hover:text-tg-text">
           {user.name}
         </span>
         <button
           type="button"
           onClick={() => setShowConfirm(true)}
-          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-500/90 hover:bg-red-500 active:bg-red-600 active:scale-90 flex items-center justify-center transition-all duration-200 shrink-0 shadow-sm hover:shadow-md ml-1"
+          className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-red-500/90 hover:bg-red-500 active:bg-red-600 active:scale-95 text-white text-[11px] sm:text-xs font-semibold transition-all duration-200 shrink-0 shadow-sm hover:shadow-md"
           aria-label="Выйти из аккаунта"
         >
-          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H9m4 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
           </svg>
+          <span className="hidden sm:inline">Выйти</span>
         </button>
       </div>
 

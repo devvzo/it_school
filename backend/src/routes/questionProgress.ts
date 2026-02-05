@@ -2,7 +2,6 @@ import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import { query } from '../db';
 import { verifyJwt } from '../utils/tokens';
-import { addXpForUser } from './progress';
 
 const router: Router = createRouter();
 
@@ -34,7 +33,10 @@ router.post('/:questionId/complete', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Вопрос не найден' });
     }
 
-    const xp = Number(questionRows[0].xp_reward) || 0;
+    const rawXp = Number(questionRows[0].xp_reward);
+    // Если в базе по какой-то причине 0 или null, даём дефолтные 5 XP,
+    // чтобы задания всё равно начисляли опыт.
+    const xp = rawXp && rawXp > 0 ? rawXp : 5;
 
     // Сохраняем прогресс вопроса
     await query(
@@ -45,10 +47,10 @@ router.post('/:questionId/complete', async (req: Request, res: Response) => {
       [userId, questionId, xp]
     );
 
-    // Начисляем дневной XP с учётом серий и дневных целей
-    const xpResult = xp > 0 ? await addXpForUser(userId, xp) : null;
-
-    res.json({ success: true, xpEarned: xp, xpProgress: xpResult });
+    // Дневной XP теперь начисляется отдельным роутом /api/progress/add-xp
+    // (через фронтенд), чтобы исключить двойные начисления и сделать
+    // поведение явным. Здесь только сохраняем факт завершения вопроса.
+    res.json({ success: true, xpEarned: xp });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Ошибка сохранения прогресса';
     res.status(500).json({ message });

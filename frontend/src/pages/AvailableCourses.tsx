@@ -131,21 +131,30 @@ const AvailableCourses: FC = () => {
       )}
 
       <section className="flex-1 bg-tg-bg-light/80 rounded-xl sm:rounded-2xl md:rounded-3xl border border-tg-border/50 shadow-tg-md p-4 sm:p-5 md:p-6 flex flex-col transition-colors duration-300 min-h-0">
-        <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-5">
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-tg-muted">
+        <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 md:mb-5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-semibold tracking-tight text-tg-text">
               Доступные курсы
             </h2>
           </div>
-          <span className="text-[10px] sm:text-xs text-tg-muted font-medium">
-            {courses === null ? <Spinner size="sm" /> : hasCourses ? `${courses.length} курса` : 'Нет курсов'}
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium bg-tg-bg-secondary text-tg-muted shrink-0" style={{ background: 'var(--tg-bg-secondary)' }}>
+            {courses === null ? (
+              <span className="inline-flex items-center gap-1">
+                <Spinner size="sm" />
+                <span>Загрузка…</span>
+              </span>
+            ) : hasCourses ? (
+              `${courses.length} курс${courses.length === 1 ? '' : courses.length < 5 ? 'а' : 'ов'}`
+            ) : (
+              'Нет курсов'
+            )}
           </span>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2 space-y-2 sm:space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1 sm:pr-2">
           {courses === null && (
-            <div className="space-y-2 sm:space-y-3">
-              {[1, 2, 3].map((id) => (
+            <div className="space-y-2 sm:space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
+              {[1, 2, 3, 4].map((id) => (
                 <div
                   key={id}
                   className="h-20 sm:h-24 rounded-xl sm:rounded-2xl bg-tg-bg-secondary animate-pulse border border-tg-border/40"
@@ -154,9 +163,13 @@ const AvailableCourses: FC = () => {
             </div>
           )}
 
-          {courses !== null && hasCourses && courses.map((course) => (
-            <CourseCard key={course.id} course={course} onEnroll={handleEnroll} />
-          ))}
+          {courses !== null && hasCourses && (
+            <div className="space-y-2 sm:space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+              {courses.map((course) => (
+                <CourseCard key={course.id} course={course} onEnroll={handleEnroll} />
+              ))}
+            </div>
+          )}
 
           {courses !== null && courses.length === 0 && (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center h-full">

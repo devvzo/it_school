@@ -52,53 +52,6 @@ export const ProgressProvider: FC<{ children: ReactNode }> = ({ children }) => {
     await loadProgress();
   }, [loadProgress]);
 
-  const addXp = useCallback(async (xp: number) => {
-    if (!token) return;
-
-    try {
-      const res = await axios.post<{
-        success: boolean;
-        todayXp: number;
-        streakDays: number;
-        minXp: number;
-        completed: boolean;
-      }>(
-        '/api/progress/add-xp',
-        { xp },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      // Обновляем прогресс сразу после добавления XP - синхронно для мгновенного отображения
-      setProgress((prev) => {
-        if (!prev) {
-          // Если прогресса еще нет, создаем его
-          return {
-            streakDays: res.data.streakDays,
-            todayXp: res.data.todayXp, // Backend вернул уже правильное значение (сумма)
-            minXp: res.data.minXp,
-            lastActivityDate: new Date().toISOString().split('T')[0],
-          };
-        }
-        // Используем значение от сервера, которое уже содержит добавленные XP
-        // Backend должен вернуть prev.todayXp + xp для того же дня
-        return {
-          ...prev,
-          todayXp: res.data.todayXp, // Backend вернул уже правильное значение (prev.todayXp + xp)
-          streakDays: res.data.streakDays,
-          minXp: res.data.minXp,
-          lastActivityDate: new Date().toISOString().split('T')[0],
-        };
-      });
-    } catch (e) {
-      console.error('Ошибка добавления XP:', e);
-      // В случае ошибки все равно обновляем прогресс
-      await refreshProgress();
-    }
-  }, [token, refreshProgress]);
-
   return (
     <ProgressContext.Provider
       value={{

@@ -18,18 +18,19 @@ const MyCourses: FC = () => {
         return;
       }
       try {
-        const res = await axios.get<Course[]>('/api/courses/my', {
+        const res = await axios.get<Course[]>('/api/courses/my-with-progress', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
+
         setCourses(res.data);
       } catch (e) {
         console.error(e);
         setCourses([]);
       }
     };
-    loadMyCourses();
+    void loadMyCourses();
   }, [user, token]);
 
   const hasCourses = courses && courses.length > 0;

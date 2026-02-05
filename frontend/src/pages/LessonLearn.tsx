@@ -360,7 +360,8 @@ const LessonLearn: FC = () => {
           [currentQuestion.id]: { completed: true, xpEarned: result.xpEarned },
         }));
 
-        // Обновляем общий прогресс (дневной XP, серия дней и т.п.) из ответа /api/progress
+        // Пересчитываем дневной прогресс: бэкенд сам суммирует XP
+        // по всем выполненным сегодня заданиям.
         await refreshProgress();
       } catch (e) {
         console.error('Ошибка сохранения прогресса по вопросу:', e);
@@ -476,21 +477,26 @@ const LessonLearn: FC = () => {
   return (
     <div className="space-y-6">
       {/* Навигация */}
-      <div className="space-y-2">
-        {/* Ссылка к курсу — выше и отдельно */}
-        <div className="flex items-center justify-between">
+      <div className="space-y-3">
+        {/* Ссылка к курсу + номер задания */}
+        <div className="flex items-center justify-between gap-2">
           <Link
             to={`/courses/${courseId}/learn`}
-            className="text-tg-muted hover:text-tg-text transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-tg-muted hover:text-tg-text transition-colors"
           >
-            ← К курсу
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>К курсу</span>
           </Link>
-          <div className="text-xs text-tg-muted">
-            {lesson.questions.length > 0 ? `Задание ${currentQuestionIndex + 1}/${lesson.questions.length}` : 'Без заданий'}
+          <div className="inline-flex items-center px-2.5 py-1 rounded-full bg-tg-bg-light border border-tg-border/50 text-[11px] sm:text-xs text-tg-muted">
+            {lesson.questions.length > 0
+              ? `Задание ${currentQuestionIndex + 1} из ${lesson.questions.length}`
+              : 'Без заданий'}
           </div>
         </div>
 
-        {/* Навигация по урокам — одинаковые кнопки, только блокировка состояния */}
+        {/* Навигация по урокам */}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -541,22 +547,26 @@ const LessonLearn: FC = () => {
       </div>
 
       {/* Заголовок урока */}
-      <div className="bg-tg-bg-light rounded-2xl border border-tg-border/50 p-6" style={{ background: 'var(--tg-bg-light)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-tg-text">{lesson.title}</h1>
-          <div className="flex items-center gap-2">
-            {hasQuestions && (
-              <span className="px-3 py-1 rounded-lg text-sm font-medium bg-tg-accent/20 text-tg-accent">
-                Заработано: {totalXpEarned} XP
+      <div className="bg-tg-bg-light rounded-2xl md:rounded-3xl border border-tg-border/50 p-5 md:p-6 shadow-tg-md" style={{ background: 'var(--tg-bg-light)' }}>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+          <div className="flex-1 min-w-0 space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-tg-text leading-snug">
+              {lesson.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-tg-muted">
+              {hasQuestions && (
+                <span className="inline-flex px-2.5 py-1 rounded-full bg-tg-accent/10 text-tg-accent font-medium">
+                  Заработано за урок: {totalXpEarned} XP
+                </span>
+              )}
+              <span className="inline-flex px-2.5 py-1 rounded-full bg-tg-bg-secondary text-tg-muted font-medium" style={{ background: 'var(--tg-bg-secondary)' }}>
+                Всего за задания: {lesson.questions.reduce((sum, q) => sum + (q.xpReward || 5), 0)} XP
               </span>
-            )}
-            <span className="px-3 py-1 rounded-lg text-sm font-medium bg-tg-bg-secondary text-tg-muted" style={{ background: 'var(--tg-bg-secondary)' }}>
-              Всего: {lesson.questions.reduce((sum, q) => sum + (q.xpReward || 5), 0)} XP
-            </span>
+            </div>
           </div>
         </div>
         <div
-          className="prose prose-invert max-w-none text-tg-text prose-headings:text-tg-text prose-p:text-tg-text prose-strong:text-tg-text prose-code:text-tg-accent"
+          className="prose prose-invert max-w-none text-sm sm:text-base text-tg-text prose-headings:text-tg-text prose-p:text-tg-text prose-strong:text-tg-text prose-code:text-tg-accent"
           dangerouslySetInnerHTML={{ __html: markdownToHtml(lesson.content) }}
         />
       </div>
@@ -564,15 +574,20 @@ const LessonLearn: FC = () => {
       {/* Вопросы и задания */}
       {hasQuestions && (
         <div className="bg-tg-bg-light rounded-2xl border border-tg-border/50 p-6" style={{ background: 'var(--tg-bg-light)' }}>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-tg-text">Вопросы и задания</h2>
-            <span className="text-sm text-tg-muted">
+          <div className="flex items-center justify-between mb-5">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-tg-text">Вопросы и задания</h2>
+              <p className="text-xs text-tg-muted">
+                Отвечайте на вопросы по очереди. Правильные ответы подсвечиваются зелёным.
+              </p>
+            </div>
+            <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-tg-bg-secondary text-tg-muted" style={{ background: 'var(--tg-bg-secondary)' }}>
               {currentQuestionIndex + 1} / {lesson.questions.length}
             </span>
           </div>
 
           {/* Индикаторы прогресса (квадратики) */}
-          <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex flex-wrap gap-2 mb-5">
             {lesson.questions.map((question, index) => {
               const status = getQuestionStatus(question.id);
               const isCurrent = index === currentQuestionIndex;
@@ -581,14 +596,14 @@ const LessonLearn: FC = () => {
               return (
                 <div
                   key={question.id}
-                  className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center font-semibold text-sm transition-all ${
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg border-2 flex items-center justify-center font-semibold text-xs sm:text-sm transition-all ${
                     isCurrent
-                      ? 'border-tg-accent bg-tg-accent/20 text-tg-accent'
+                      ? 'border-tg-accent bg-tg-accent/15 text-tg-accent'
                       : status === 'correct'
-                      ? 'border-tg-success-border'
+                      ? 'border-tg-success-border bg-tg-success-bg text-tg-success-text'
                       : status === 'incorrect' && showError[question.id]
-                      ? 'border-tg-error-border animate-pulse'
-                      : 'border-tg-border/50 bg-tg-bg text-tg-muted'
+                      ? 'border-tg-error-border bg-tg-error-bg text-tg-error-text animate-pulse'
+                      : 'border-tg-border/40 bg-tg-bg text-tg-muted'
                   }`}
                   style={{
                     background: status === 'correct' 
@@ -637,35 +652,28 @@ const LessonLearn: FC = () => {
                 className="space-y-4"
               >
                 <div
-                  className={`p-4 rounded-xl border transition-all ${
+                  className={`p-4 sm:p-5 rounded-2xl border transition-all ${
                     isQuestionCompleted
-                      ? 'border-tg-success-border'
+                      ? 'border-tg-success-border bg-tg-success-bg/60'
                       : showError[currentQuestion.id]
-                      ? 'border-tg-error-border'
+                      ? 'border-tg-error-border bg-tg-error-bg/70'
                       : results[currentQuestion.id]?.isCorrect
-                      ? 'border-tg-success-border'
+                      ? 'border-tg-success-border bg-tg-success-bg/60'
                       : 'bg-tg-bg border-tg-border/50'
                   }`}
-                  style={{
-                    background: isQuestionCompleted 
-                      ? 'var(--tg-success-bg)' 
-                      : showError[currentQuestion.id]
-                      ? 'var(--tg-error-bg)'
-                      : results[currentQuestion.id]?.isCorrect
-                      ? 'var(--tg-success-bg)'
-                      : 'var(--tg-bg)',
-                  }}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1">
-                      <p className="text-tg-text font-medium flex-1 text-lg mb-1">
+                      <p className="text-tg-text font-semibold text-base sm:text-lg mb-1">
                         {currentQuestion.questionText}
                       </p>
                       {!isQuestionCompleted && (
                         <span className="text-xs text-tg-muted">+{currentQuestion.xpReward || 5} XP за правильный ответ</span>
                       )}
                       {isQuestionCompleted && (
-                        <span className="text-xs" style={{ color: 'var(--tg-success-text)' }}>✓ Выполнено (+{currentQuestionProgress.xpEarned} XP)</span>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ color: 'var(--tg-success-text)', background: 'var(--tg-success-bg)' }}>
+                          ✓ Задание выполнено • +{currentQuestionProgress.xpEarned} XP
+                        </span>
                       )}
                     </div>
                     {(isQuestionCompleted || results[currentQuestion.id]?.isCorrect) && (
@@ -887,13 +895,13 @@ const LessonLearn: FC = () => {
 
                   {isQuestionCompleted && (
                     <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mt-3 p-3 rounded-xl border"
-                      style={{ background: 'var(--tg-success-bg)', borderColor: 'var(--tg-success-border)' }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-3 p-3 rounded-xl border border-tg-success-border"
+                      style={{ background: 'var(--tg-success-bg)' }}
                     >
                       <p className="text-sm font-semibold" style={{ color: 'var(--tg-success-text)' }}>
-                        ✓ Задание выполнено правильно! +{currentQuestionProgress.xpEarned} XP начислено
+                        Отлично! Это задание полностью зачтено, XP уже добавлены в ваш дневной прогресс.
                       </p>
                     </motion.div>
                   )}

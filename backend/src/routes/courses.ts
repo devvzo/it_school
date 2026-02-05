@@ -112,6 +112,85 @@ router.get('/my', async (req: Request, res: Response) => {
   }
 });
 
+// Мои курсы с агрегированным прогрессом по урокам
+router.get('/my-with-progress', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Не авторизован' });
+    }
+
+    const token = authHeader.substring(7);
+    const payload = verifyJwt(token);
+    const userId = payload.userId;
+
+    const rows = await query<{
+      course_id: number;
+      title: string;
+      level: string;
+      description: string;
+      image_url: string | null;
+      duration: string | null;
+      students_count: number;
+      color: string | null;
+      total_lessons: number;
+      completed_lessons: number;
+      last_enrolled_at: Date | null;
+    }>(
+      `
+      SELECT
+        c.id AS course_id,
+        c.title,
+        c.level,
+        c.description,
+        c.image_url,
+        c.duration,
+        COALESCE(
+          c.students_count,
+          (SELECT COUNT(*) FROM user_course_enrollments uce2 WHERE uce2.course_id = c.id),
+          0
+        ) AS students_count,
+        c.color,
+        COUNT(l.id) AS total_lessons,
+        COUNT(CASE WHEN ulp.completed THEN 1 END) AS completed_lessons,
+        MAX(uce.enrolled_at) AS last_enrolled_at
+      FROM user_course_enrollments uce
+      JOIN courses c ON c.id = uce.course_id
+      LEFT JOIN course_modules m ON m.course_id = c.id
+      LEFT JOIN course_lessons l ON l.module_id = m.id
+      LEFT JOIN user_lesson_progress ulp
+        ON ulp.lesson_id = l.id AND ulp.user_id = uce.user_id
+      WHERE uce.user_id = $1 AND c.is_active = true
+      GROUP BY c.id, c.title, c.level, c.description, c.image_url, c.duration, c.students_count, c.color
+      ORDER BY last_enrolled_at DESC NULLS LAST
+      `,
+      [userId]
+    );
+
+    const data = rows.map((row) => ({
+      id: row.course_id.toString(),
+      title: row.title,
+      level: row.level as 'Новичок' | 'Средний' | 'Продвинутый',
+      description: row.description,
+      duration: row.duration ?? '',
+      studentsCount: Number(row.students_count) || 0,
+      color: row.color ?? 'linear-gradient(90deg, #2AABEE, #00FFB3)',
+      imageUrl: row.image_url,
+      totalLessons: Number(row.total_lessons) || 0,
+      completedLessons: Number(row.completed_lessons) || 0,
+      progressPercent:
+        Number(row.total_lessons) > 0
+          ? Math.round((Number(row.completed_lessons || 0) / Number(row.total_lessons)) * 100)
+          : 0,
+    }));
+
+    res.json(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Ошибка загрузки курсов';
+    res.status(500).json({ message });
+  }
+});
+
 // Получить курс с модулями и уроками для прохождения
 router.get('/:courseId/learn', async (req: Request, res: Response) => {
   try {
@@ -176,17 +255,25 @@ router.get('/:courseId/learn', async (req: Request, res: Response) => {
     // Получаем модули
     const modulesWithLessons = await Promise.all(
       modules.map(async (module) => {
-    const lessons = await query<{
-      id: number;
-      title: string;
-      xp_reward: number;
-      required_xp: number;
-      order_index: number;
-    }>('SELECT id, title, xp_reward, required_xp, order_index FROM course_lessons WHERE module_id = $1 ORDER BY order_index', [module.id]);
+        const lessons = await query<{
+          id: number;
+          title: string;
+          xp_reward: number;
+          required_xp: number;
+          order_index: number;
+        }>(
+          'SELECT id, title, xp_reward, required_xp, order_index FROM course_lessons WHERE module_id = $1 ORDER BY order_index',
+          [module.id]
+        );
 
         // Суммарный XP по заданиям для каждого урока модуля
         const lessonIds = lessons.map((l) => l.id);
         let xpByLesson: Record<number, number> = {};
+        let questionProgressByLesson: Record<
+          number,
+          { totalQuestions: number; completedQuestions: number }
+        > = {};
+
         if (lessonIds.length > 0) {
           const xpRows = await query<{ lesson_id: number; total: number | null }>(
             'SELECT lesson_id, SUM(xp_reward) as total FROM lesson_questions WHERE lesson_id = ANY($1) GROUP BY lesson_id',
@@ -196,24 +283,66 @@ router.get('/:courseId/learn', async (req: Request, res: Response) => {
             acc[row.lesson_id] = Number(row.total) || 0;
             return acc;
           }, {} as Record<number, number>);
+
+          // Считаем прогресс по вопросам для каждого урока:
+          // если в урок добавили новые вопросы после того, как он был завершён,
+          // completed станет false, пока не будут решены все текущие вопросы.
+          const qProgRows = await query<{
+            lesson_id: number;
+            total_questions: number;
+            completed_questions: number;
+          }>(
+            `SELECT
+               lq.lesson_id,
+               COUNT(*) AS total_questions,
+               COUNT(CASE WHEN uqp.completed THEN 1 END) AS completed_questions
+             FROM lesson_questions lq
+             LEFT JOIN user_question_progress uqp
+               ON uqp.question_id = lq.id AND uqp.user_id = $1
+             WHERE lq.lesson_id = ANY($2)
+             GROUP BY lq.lesson_id`,
+            [userId, lessonIds]
+          );
+
+          questionProgressByLesson = qProgRows.reduce((acc, row) => {
+            acc[row.lesson_id] = {
+              totalQuestions: Number(row.total_questions) || 0,
+              completedQuestions: Number(row.completed_questions) || 0,
+            };
+            return acc;
+          }, {} as Record<number, { totalQuestions: number; completedQuestions: number }>);
         }
 
         // Проверяем прогресс для каждого урока
         const lessonsWithProgress = await Promise.all(
           lessons.map(async (lesson) => {
-            const progress = await query<{ completed: boolean }>(
-              'SELECT completed FROM user_lesson_progress WHERE user_id = $1 AND lesson_id = $2',
-              [userId, lesson.id]
-            );
             const requiredXp = lesson.required_xp || 0;
             const unlocked = userCourseXp >= requiredXp;
+
+            // Старое поле user_lesson_progress могло остаться от предыдущих попыток.
+            // Теперь дополнительно проверяем, что все текущие вопросы урока
+            // действительно решены.
+            const lessonQuestionProg = questionProgressByLesson[lesson.id];
+            let completed = false;
+
+            if (lessonQuestionProg && lessonQuestionProg.totalQuestions > 0) {
+              completed =
+                lessonQuestionProg.completedQuestions >= lessonQuestionProg.totalQuestions;
+            } else {
+              // Если в уроке нет вопросов, опираемся на агрегированное поле (как раньше)
+              const progress = await query<{ completed: boolean }>(
+                'SELECT completed FROM user_lesson_progress WHERE user_id = $1 AND lesson_id = $2',
+                [userId, lesson.id]
+              );
+              completed = progress[0]?.completed || false;
+            }
 
             return {
               id: lesson.id,
               title: lesson.title,
               xpReward: xpByLesson[lesson.id] ?? 0,
               orderIndex: lesson.order_index,
-              completed: progress[0]?.completed || false,
+              completed,
               requiredXp,
               unlocked,
             };

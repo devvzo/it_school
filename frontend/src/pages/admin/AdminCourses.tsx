@@ -16,6 +16,34 @@ interface Course {
   createdAt: string;
 }
 
+const avatarColors = [
+  '#0EA5E9',
+  '#22C55E',
+  '#A855F7',
+  '#F97316',
+  '#EC4899',
+  '#6366F1',
+];
+
+const getAvatarColor = (title: string) => {
+  let hash = 0;
+  for (let i = 0; i < title.length; i += 1) {
+    hash = (hash * 31 + title.charCodeAt(i)) | 0;
+  }
+  const index = Math.abs(hash) % avatarColors.length;
+  return avatarColors[index];
+};
+
+const getCourseImageSrc = (imageUrl: string | null) => {
+  if (!imageUrl) return '';
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+  const isDev = import.meta.env?.DEV;
+  const base = isDev ? 'http://localhost:4000' : '';
+  return `${base}${imageUrl}`;
+};
+
 const AdminCourses: FC = () => {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -83,20 +111,22 @@ const AdminCourses: FC = () => {
               >
                 <div className="flex items-center px-3.5 pt-3.5 pb-2.5 gap-3">
                   {course.imageUrl ? (
-                    <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 shadow-tg-md border border-tg-border/40">
+                    <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 shadow-tg-md border border-tg-border/40">
                       <img
-                        src={
-                          course.imageUrl.startsWith('http')
-                            ? course.imageUrl
-                            : `http://localhost:4000${course.imageUrl}`
-                        }
+                        src={getCourseImageSrc(course.imageUrl)}
                         alt={course.title}
                         className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-tg-md bg-tg-accent">
-                      {initials}
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-tg-md"
+                      style={{ background: getAvatarColor(course.title) }}
+                    >
+                      {initials || course.title[0]?.toUpperCase()}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

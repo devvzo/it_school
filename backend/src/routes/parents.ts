@@ -7,6 +7,27 @@ import { verifyJwt } from '../utils/tokens';
 
 const router: Router = createRouter();
 
+function getTodayMoscowLocal(): string {
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60_000;
+  const moscowMs = utcMs + 3 * 60 * 60_000; // UTC+3
+  const d = new Date(moscowMs);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function addDaysLocal(yyyyMmDd: string, deltaDays: number): string {
+  const [y, m, d] = yyyyMmDd.split('-').map((x) => Number(x));
+  const dt = new Date(y, (m || 1) - 1, d || 1);
+  dt.setDate(dt.getDate() + deltaDays);
+  const yyyy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Получить список детей текущего родителя
 router.get('/children', async (req: Request, res: Response) => {
   try {
@@ -284,12 +305,16 @@ router.get('/children/:childId/overview', async (req: Request, res: Response) =>
     }
     const child = users[0];
 
-    // Прогресс по ударным дням
+    // Прогресс по ударным дням — считаем по той же логике,
+    // что и основной /api/progress, чтобы "минимальное количество XP"
+    // совпадало у ребёнка и у родителя.
+    const today = getTodayMoscowLocal();
     const progressRows = await query<{
       streak_days: number;
+      last_activity_date: string | null;
       today_xp: number;
     }>(
-      'SELECT streak_days, today_xp FROM user_progress WHERE user_id = $1',
+      'SELECT streak_days, last_activity_date, today_xp FROM user_progress WHERE user_id = $1',
       [childId]
     );
 
@@ -300,8 +325,33 @@ router.get('/children/:childId/overview', async (req: Request, res: Response) =>
     let completedToday = false;
 
     if (progressRows.length > 0) {
-      streakDays = progressRows[0].streak_days;
-      todayXp = Number(progressRows[0].today_xp) || 0;
+      const progress = progressRows[0];
+      const lastDate = progress.last_activity_date
+        ? String(progress.last_activity_date).slice(0, 10)
+        : null;
+
+      streakDays = progress.streak_days;
+      todayXp = Number(progress.today_xp) || 0;
+
+      if (lastDate !== today) {
+        const yesterdayStr = addDaysLocal(today, -1);
+
+        const yesterdayLog = await query<{ xp: number }>(
+          'SELECT xp FROM daily_xp_logs WHERE user_id = $1 AND date = $2',
+          [childId, yesterdayStr]
+        );
+        const yesterdayXp = yesterdayLog.length > 0 ? Number(yesterdayLog[0].xp) || 0 : 0;
+        const yesterdayMinXp = calcMinXpLocal(progress.streak_days);
+
+        if (lastDate === yesterdayStr && yesterdayXp >= yesterdayMinXp) {
+          streakDays = progress.streak_days + 1;
+        } else {
+          streakDays = 1;
+        }
+
+        todayXp = 0;
+      }
+
       minXp = calcMinXpLocal(streakDays);
       dayNumber = Math.max(1, streakDays || 1);
       completedToday = todayXp >= minXp;
