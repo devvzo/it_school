@@ -198,13 +198,14 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     // Считаем XP за сегодня и за вчера по фактическим выполненным заданиям
+    // Важно: преобразуем completed_at в московское время перед сравнением с датой
     const [todayRows, yesterdayRows] = await Promise.all([
       query<{ total: number | null }>(
         `SELECT SUM(xp_earned) AS total
          FROM user_question_progress
          WHERE user_id = $1
            AND completed = true
-           AND completed_at::date = $2`,
+           AND (completed_at AT TIME ZONE 'Europe/Moscow')::date = $2::date`,
         [userId, today]
       ),
       query<{ total: number | null }>(
@@ -212,7 +213,7 @@ router.get('/', async (req: Request, res: Response) => {
          FROM user_question_progress
          WHERE user_id = $1
            AND completed = true
-           AND completed_at::date = $2`,
+           AND (completed_at AT TIME ZONE 'Europe/Moscow')::date = $2::date`,
         [userId, yesterday]
       ),
     ]);

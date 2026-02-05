@@ -309,12 +309,13 @@ router.get('/children/:childId/overview', async (req: Request, res: Response) =>
     // что и основной /api/progress, чтобы "минимальное количество XP"
     // совпадало у ребёнка и у родителя.
     const today = getTodayMoscowLocal();
+    const yesterdayStr = addDaysLocal(today, -1);
+    
     const progressRows = await query<{
       streak_days: number;
       last_activity_date: string | null;
-      today_xp: number;
     }>(
-      'SELECT streak_days, last_activity_date, today_xp FROM user_progress WHERE user_id = $1',
+      'SELECT streak_days, last_activity_date FROM user_progress WHERE user_id = $1',
       [childId]
     );
 
@@ -331,28 +332,42 @@ router.get('/children/:childId/overview', async (req: Request, res: Response) =>
         : null;
 
       streakDays = progress.streak_days;
-      todayXp = Number(progress.today_xp) || 0;
+
+      // Считаем XP за сегодня и за вчера по фактическим выполненным заданиям
+      // Важно: преобразуем completed_at в московское время перед сравнением с датой
+      const [todayRows, yesterdayRows] = await Promise.all([
+        query<{ total: number | null }>(
+          `SELECT SUM(xp_earned) AS total
+           FROM user_question_progress
+           WHERE user_id = $1
+             AND completed = true
+             AND (completed_at AT TIME ZONE 'Europe/Moscow')::date = $2::date`,
+          [childId, today]
+        ),
+        query<{ total: number | null }>(
+          `SELECT SUM(xp_earned) AS total
+           FROM user_question_progress
+           WHERE user_id = $1
+             AND completed = true
+             AND (completed_at AT TIME ZONE 'Europe/Moscow')::date = $2::date`,
+          [childId, yesterdayStr]
+        ),
+      ]);
+
+      todayXp = Number(todayRows[0]?.total) || 0;
+      const yesterdayXp = Number(yesterdayRows[0]?.total) || 0;
 
       if (lastDate !== today) {
-        const yesterdayStr = addDaysLocal(today, -1);
-
-        const yesterdayLog = await query<{ xp: number }>(
-          'SELECT xp FROM daily_xp_logs WHERE user_id = $1 AND date = $2',
-          [childId, yesterdayStr]
-        );
-        const yesterdayXp = yesterdayLog.length > 0 ? Number(yesterdayLog[0].xp) || 0 : 0;
         const yesterdayMinXp = calcMinXpLocal(progress.streak_days);
 
         if (lastDate === yesterdayStr && yesterdayXp >= yesterdayMinXp) {
           streakDays = progress.streak_days + 1;
         } else {
-          streakDays = 1;
+          streakDays = todayXp > 0 ? 1 : 0;
         }
-
-        todayXp = 0;
       }
 
-      minXp = calcMinXpLocal(streakDays);
+      minXp = calcMinXpLocal(streakDays || 1);
       dayNumber = Math.max(1, streakDays || 1);
       completedToday = todayXp >= minXp;
     }
