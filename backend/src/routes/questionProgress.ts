@@ -2,6 +2,7 @@ import type { Request, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
 import { query } from '../db';
 import { verifyJwt } from '../utils/tokens';
+import { addXpForUser } from './progress';
 
 const router: Router = createRouter();
 
@@ -47,9 +48,9 @@ router.post('/:questionId/complete', async (req: Request, res: Response) => {
       [userId, questionId, xp]
     );
 
-    // Дневной XP теперь начисляется отдельным роутом /api/progress/add-xp
-    // (через фронтенд), чтобы исключить двойные начисления и сделать
-    // поведение явным. Здесь только сохраняем факт завершения вопроса.
+    // Начисляем дневной XP на сервере (user_progress.today_xp и daily_xp_logs)
+    await addXpForUser(userId, xp);
+
     res.json({ success: true, xpEarned: xp });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Ошибка сохранения прогресса';

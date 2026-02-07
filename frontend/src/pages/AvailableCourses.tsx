@@ -1,5 +1,6 @@
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import Spinner from '../components/Spinner';
@@ -70,7 +71,9 @@ const HeroBenefits: FC = () => {
 
 const AvailableCourses: FC = () => {
   const [courses, setCourses] = useState<Course[] | null>(null);
+  const [myCourses, setMyCourses] = useState<Course[] | null>(null);
   const { user, token } = useAuth();
+  const navigate = useNavigate();
 
   const loadCourses = async () => {
     try {
@@ -102,9 +105,25 @@ const AvailableCourses: FC = () => {
     }
   };
 
+  const loadMyCourses = async () => {
+    if (!user || !token) {
+      setMyCourses([]);
+      return;
+    }
+    try {
+      const res = await axios.get<Course[]>('/api/courses/my-with-progress', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMyCourses(res.data.map((c) => ({ ...c, enrolled: true })));
+    } catch (e) {
+      console.error(e);
+      setMyCourses([]);
+    }
+  };
+
   const handleEnroll = () => {
-    // Перезагружаем список курсов после записи
     void loadCourses();
+    void loadMyCourses();
   };
 
   useEffect(() => {
@@ -112,7 +131,12 @@ const AvailableCourses: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);
 
+  useEffect(() => {
+    void loadMyCourses();
+  }, [user, token]);
+
   const hasCourses = courses && courses.length > 0;
+  const hasMyCourses = myCourses && myCourses.length > 0;
 
   return (
     <>
@@ -126,6 +150,44 @@ const AvailableCourses: FC = () => {
               {/* Слайдер преимуществ: для детей / для родителей */}
               <HeroBenefits />
             </div>
+          </div>
+        </section>
+      )}
+
+      {user && (
+        <section className="bg-tg-bg-light/80 rounded-xl sm:rounded-2xl md:rounded-3xl border border-tg-border/50 shadow-tg-md p-4 sm:p-5 md:p-6 flex flex-col transition-colors duration-300 min-h-0">
+          <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-5">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-tg-muted">
+                Мои курсы
+              </h2>
+            </div>
+            <span className="text-[10px] sm:text-xs text-tg-muted font-medium">
+              {myCourses === null ? (
+                <span className="inline-flex items-center gap-1">
+                  <Spinner size="sm" />
+                </span>
+              ) : hasMyCourses ? (
+                `${myCourses.length} курса`
+              ) : (
+                'Нет курсов'
+              )}
+            </span>
+          </div>
+          <div className="min-h-0 overflow-y-auto pr-1 sm:pr-2 space-y-2 sm:space-y-3">
+            {myCourses !== null && hasMyCourses &&
+              myCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  onEnroll={() => navigate(`/courses/${course.id}/learn`)}
+                />
+              ))}
+            {myCourses !== null && !hasMyCourses && (
+              <p className="text-[10px] sm:text-xs text-tg-muted py-2">
+                Запишитесь на курс в блоке «Доступные курсы» ниже.
+              </p>
+            )}
           </div>
         </section>
       )}

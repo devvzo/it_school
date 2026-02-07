@@ -154,6 +154,31 @@ export async function addXpForUser(userId: number, xp: number): Promise<UserXpRe
   };
 }
 
+// Начислить дневной XP (вызывается при завершении задания или из фронта)
+router.post('/add-xp', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Не авторизован' });
+    }
+
+    const token = authHeader.substring(7);
+    const payload = verifyJwt(token);
+    const userId = payload.userId;
+
+    const xp = typeof req.body?.xp === 'number' ? req.body.xp : Number(req.body?.xp);
+    if (!xp || xp <= 0) {
+      return res.status(400).json({ message: 'Укажите положительное количество XP' });
+    }
+
+    const result = await addXpForUser(userId, xp);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Ошибка начисления XP';
+    res.status(500).json({ message });
+  }
+});
+
 // Получить прогресс пользователя
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -166,7 +191,11 @@ router.get('/', async (req: Request, res: Response) => {
     const payload = verifyJwt(token);
     const userId = payload.userId;
 
-    const today = getTodayMoscow();
+    // Дату "сегодня" берём из БД по Москве, чтобы не расходиться с сервером по TZ
+    const todayRowsDb = await query<{ today: string }>(
+      `SELECT (NOW() AT TIME ZONE 'Europe/Moscow')::date::text AS today`
+    );
+    const today = todayRowsDb[0]?.today?.slice(0, 10) || getTodayMoscow();
     const yesterday = addDaysLocal(today, -1);
 
     // Берём или создаём запись user_progress только для хранения серии и даты.
@@ -198,7 +227,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     // Считаем XP за сегодня и за вчера по фактическим выполненным заданиям
-    // Важно: преобразуем completed_at в московское время перед сравнением с датой
+    // completed_at хранится в UTC; приводим к московской дате в БД
     const [todayRows, yesterdayRows] = await Promise.all([
       query<{ total: number | null }>(
         `SELECT SUM(xp_earned) AS total
