@@ -7,6 +7,7 @@ import './setupAxios';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ProgressProvider } from './context/ProgressContext';
+import { XpFlyProvider } from './context/XpFlyContext';
 
 // Глобальные ограничения на копирование/контекстное меню.
 // Оставляем нормальное поведение только в формах (input/textarea/contenteditable),
@@ -75,7 +76,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ThemeProvider>
         <AuthProvider>
           <ProgressProvider>
-            <App />
+            <XpFlyProvider>
+              <App />
+            </XpFlyProvider>
           </ProgressProvider>
         </AuthProvider>
       </ThemeProvider>

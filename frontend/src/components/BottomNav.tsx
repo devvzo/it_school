@@ -1,104 +1,125 @@
 import type { FC } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
+const iconTransition = {
+  duration: 2.2,
+  repeat: Infinity,
+  repeatType: 'reverse' as const,
+  ease: 'easeInOut' as const,
+};
+
+// Курсы — каталог (сетка), лёгкий пульс
+const IconCourses = () => (
+  <motion.svg
+    className="w-5 h-5 shrink-0"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    initial={false}
+    animate={{ scale: [1, 1.07, 1] }}
+    transition={iconTransition}
+  >
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+  </motion.svg>
+);
+
+// Мои курсы — открытая книга, «дыхание»
+const IconMyCourses = () => (
+  <motion.svg
+    className="w-5 h-5 shrink-0"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    initial={false}
+    animate={{ scale: [1, 1.08, 1] }}
+    transition={iconTransition}
+  >
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </motion.svg>
+);
+
+// Профиль — человек, лёгкий пульс
+const IconProfile = () => (
+  <motion.svg
+    className="w-5 h-5 shrink-0"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    initial={false}
+    animate={{ scale: [1, 1.06, 1] }}
+    transition={iconTransition}
+  >
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+  </motion.svg>
+);
+
+const navItems: { path: string; label: string; Icon: FC }[] = [
+  { path: '/', label: 'Курсы', Icon: IconCourses },
+  { path: '/my-courses', label: 'Мои курсы', Icon: IconMyCourses },
+  { path: '/profile', label: 'Профиль', Icon: IconProfile },
+];
 
 const BottomNav: FC = () => {
   const location = useLocation();
-  const isActive = (path: string) => location.pathname === path;
 
   return (
     <nav
-      className="md:hidden fixed inset-x-0 bottom-3 z-30 flex justify-center pointer-events-none"
-      style={{
-        paddingBottom: 'max(env(safe-area-inset-bottom), 0px)',
-      }}
+      className="md:hidden fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-4 pt-2 pointer-events-none"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      aria-label="Основная навигация"
     >
       <div
-        className="pointer-events-auto inline-flex items-center justify-between gap-2 px-4 py-2 rounded-full bg-tg-bg-light/80 border border-tg-border/40 shadow-[0_10px_30px_rgba(15,23,42,0.4)] backdrop-blur-md w-[calc(100%-32px)] max-w-2xl"
+        className="pointer-events-auto relative flex items-center justify-around gap-0 w-full max-w-md h-14 rounded-2xl border border-tg-border/50 shadow-tg-md transition-colors duration-300 overflow-hidden"
         style={{
-          background: 'color-mix(in srgb, var(--tg-bg-light) 70%, transparent)',
-          WebkitBackdropFilter: 'blur(14px)',
+          background: 'color-mix(in srgb, var(--tg-bg-light) 85%, transparent)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
       >
-        <Link
-          to="/"
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-colors duration-200 ${
-            isActive('/')
-              ? 'text-tg-accent'
-              : 'text-tg-muted'
-          }`}
-          style={{
-            background: isActive('/') ? 'var(--tg-hover)' : 'transparent',
-          }}
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-            />
-          </svg>
-          <span>Курсы</span>
-        </Link>
-
-        <Link
-          to="/my-courses"
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-colors duration-200 ${
-            isActive('/my-courses')
-              ? 'text-tg-accent'
-              : 'text-tg-muted'
-          }`}
-          style={{
-            background: isActive('/my-courses') ? 'var(--tg-hover)' : 'transparent',
-          }}
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-            />
-          </svg>
-          <span>Мои курсы</span>
-        </Link>
-
-        <Link
-          to="/profile"
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-colors duration-200 ${
-            isActive('/profile')
-              ? 'text-tg-accent'
-              : 'text-tg-muted'
-          }`}
-          style={{
-            background: isActive('/profile') ? 'var(--tg-hover)' : 'transparent',
-          }}
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5.121 17.804A4 4 0 019 16h6a4 4 0 013.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-          <span>Профиль</span>
-        </Link>
+        {navItems.map(({ path, label, Icon }) => {
+          const isActive = location.pathname === path;
+          return (
+            <Link
+              key={path}
+              to={path}
+              className="relative flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 h-full py-2 px-2 rounded-xl text-[11px] sm:text-xs font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-tg-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[0.97]"
+              style={{
+                color: isActive ? 'var(--tg-accent)' : 'var(--tg-muted)',
+              }}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {isActive && (
+                <motion.span
+                  className="absolute inset-1 rounded-xl"
+                  layoutId="bottom-nav-pill"
+                  style={{
+                    background: 'var(--tg-hover)',
+                  }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                />
+              )}
+              <span className="relative z-0 flex items-center justify-center w-6 h-6">
+                <Icon />
+              </span>
+              <span className="relative z-0 truncate max-w-full">{label}</span>
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

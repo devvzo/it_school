@@ -2,41 +2,43 @@ import type { FC } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useProgress } from '../context/ProgressContext';
+import { useXpFly } from '../context/XpFlyContext';
 
 const CompactProgress: FC = () => {
   const { progress: progressData } = useProgress();
-  
-  if (!progressData) return null;
-  
-  const { streakDays, todayXp, minXp } = progressData;
-  const progressPercent = Math.min((todayXp / minXp) * 100, 100);
-  const isCompleted = todayXp >= minXp;
+  const { registerTargetRef } = useXpFly();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [animatedXp, setAnimatedXp] = useState(0);
+  const prevXpRef = useRef(0);
 
-  const [animatedXp, setAnimatedXp] = useState(todayXp);
-  const prevXpRef = useRef(todayXp);
+  useEffect(() => {
+    const unregister = registerTargetRef(wrapperRef);
+    return unregister;
+  }, [registerTargetRef]);
 
+  const todayXp = progressData?.todayXp ?? 0;
   useEffect(() => {
     const start = prevXpRef.current;
     const end = todayXp;
-
     if (start === end) return;
-
-    const duration = 300; // ms
+    const duration = 300;
     const startTime = performance.now();
-
     const step = (now: number) => {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
       const value = Math.round(start + (end - start) * t);
       setAnimatedXp(value);
-      if (t < 1) {
-        requestAnimationFrame(step);
-      }
+      if (t < 1) requestAnimationFrame(step);
     };
-
     requestAnimationFrame(step);
-    prevXpRef.current = todayXp;
+    prevXpRef.current = end;
   }, [todayXp]);
+
+  if (!progressData) return null;
+
+  const { streakDays, minXp } = progressData;
+  const progressPercent = Math.min((todayXp / minXp) * 100, 100);
+  const isCompleted = todayXp >= minXp;
 
   const getStreakText = (days: number) => {
     const dayNumber = Math.max(1, days || 1);
@@ -46,6 +48,7 @@ const CompactProgress: FC = () => {
   return (
     <>
       <div
+        ref={wrapperRef}
         className="flex items-center gap-2 px-2.5 py-1.5 rounded-full border border-tg-border/50 shrink-0 max-w-[56vw] shadow-tg-sm"
         style={{ background: 'var(--tg-bg-secondary)' }}
         title={`${getStreakText(streakDays)} • ${todayXp}/${minXp} XP`}

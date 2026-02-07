@@ -1,11 +1,12 @@
 import type { FC } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Spinner from '../components/Spinner';
 import { useProgress } from '../context/ProgressContext';
+import { useXpFly } from '../context/XpFlyContext';
 
 interface Question {
   id: number;
@@ -67,6 +68,8 @@ const LessonLearn: FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const { refreshProgress } = useProgress();
+  const { flyXp } = useXpFly();
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -342,65 +345,58 @@ const LessonLearn: FC = () => {
     setResults((prev) => ({ ...prev, [currentQuestion.id]: result }));
 
     if (result.isCorrect && result.xpEarned > 0) {
-      // Правильный ответ - сохраняем прогресс и даём серверу самому начислить XP
-      try {
-        await axios.post(
-          `/api/questions/${currentQuestion.id}/complete`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+      // Начисляем сразу и запускаем полёт одновременно — бейдж обновляется, пока летит «+N XP»
+      const sourceRect = submitButtonRef.current?.getBoundingClientRect() ?? null;
 
-        // Обновляем локальный прогресс по вопросу
-        setQuestionProgress((prev) => ({
-          ...prev,
-          [currentQuestion.id]: { completed: true, xpEarned: result.xpEarned },
-        }));
+      const saveAndRefresh = async () => {
+        try {
+          await axios.post(
+            `/api/questions/${currentQuestion.id}/complete`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setQuestionProgress((prev) => ({
+            ...prev,
+            [currentQuestion.id]: { completed: true, xpEarned: result.xpEarned },
+          }));
+          await refreshProgress();
+        } catch (e) {
+          console.error('Ошибка сохранения прогресса по вопросу:', e);
+          alert('Ошибка сохранения прогресса. Попробуйте обновить страницу.');
+          setSubmitting(false);
+        }
+      };
 
-        // Пересчитываем дневной прогресс: бэкенд сам суммирует XP
-        // по всем выполненным сегодня заданиям.
-        await refreshProgress();
-      } catch (e) {
-        console.error('Ошибка сохранения прогресса по вопросу:', e);
-        alert('Ошибка сохранения прогресса. Попробуйте обновить страницу.');
-      }
-
-      // Переходим к следующему вопросу через 1.5 секунды
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      if (currentQuestionIndex < lesson.questions.length - 1) {
-        setCurrentQuestionIndex((prev) => prev + 1);
-        setAnswers((prev) => {
-          const next = { ...prev };
-          delete next[lesson.questions[currentQuestionIndex + 1]?.id];
-          return next;
-        });
-      } else {
-        // Последний вопрос - проверяем, все ли решены
-        const updatedProgress = { ...questionProgress, [currentQuestion.id]: { completed: true, xpEarned: result.xpEarned } };
-        const allCompleted = lesson.questions.every(q => updatedProgress[q.id]?.completed);
-        
-        if (allCompleted) {
-          try {
-            await axios.post(
-              `/api/courses/lessons/${lessonId}/complete`,
-              {},
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-            setCompleted(true);
-          } catch (e: any) {
-            console.error(e);
-            alert(e?.response?.data?.message || 'Ошибка сохранения прогресса');
+      void saveAndRefresh();
+      flyXp(result.xpEarned, sourceRect, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        if (currentQuestionIndex < lesson.questions.length - 1) {
+          setCurrentQuestionIndex((prev) => prev + 1);
+          setAnswers((prev) => {
+            const next = { ...prev };
+            delete next[lesson.questions[currentQuestionIndex + 1]?.id];
+            return next;
+          });
+        } else {
+          const updatedProgress = { ...questionProgress, [currentQuestion.id]: { completed: true, xpEarned: result.xpEarned } };
+          const allCompleted = lesson.questions.every((q) => updatedProgress[q.id]?.completed);
+          if (allCompleted) {
+            try {
+              await axios.post(
+                `/api/courses/lessons/${lessonId}/complete`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              setCompleted(true);
+            } catch (e: any) {
+              console.error(e);
+              alert(e?.response?.data?.message || 'Ошибка сохранения прогресса');
+            }
           }
         }
-      }
+        setSubmitting(false);
+      });
+      return;
     } else {
       // Неправильный ответ - показываем красный индикатор на 3 секунды
       setShowError((prev) => ({ ...prev, [currentQuestion.id]: true }));
@@ -911,6 +907,8 @@ const LessonLearn: FC = () => {
                 {!isQuestionCompleted && (
                   <div className="flex justify-end">
                     <button
+                      ref={submitButtonRef}
+                      type="button"
                       onClick={handleSubmitAnswer}
                       disabled={submitting || showError[currentQuestion.id]}
                       className="px-6 py-3 rounded-xl bg-tg-accent hover:bg-tg-accent-soft text-white font-semibold transition-colors disabled:opacity-50"
